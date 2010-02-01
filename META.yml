@@ -1,0 +1,40 @@
+---
+abstract: 'link-based resource descriptor discovery'
+author:
+  - 'Toby Inkster <tobyink@cpan.org>'
+build_requires:
+  ExtUtils::MakeMaker: 6.42
+  Test::More: 0.61
+configure_requires:
+  ExtUtils::MakeMaker: 6.42
+distribution_type: module
+generated_by: 'Module::Install version 0.91'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: HTTP-LRDD
+no_index:
+  directory:
+    - inc
+    - t
+requires:
+  Carp: 1.00
+  Error: 0
+  HTML::HTML5::Parser: 0
+  HTML::HTML5::Sanity: 0
+  HTTP::Link::Parser: 0
+  HTTP::Status: 0
+  RDF::RDFa::Parser: 0.30
+  RDF::TrineShortcuts: 0
+  URI: 1.30
+  URI::Escape: 0
+  XML::Atom::OWL: 0
+  XRD::Parser: 0
+  perl: 5.8.0
+resources:
+  bugtracker: http://rt.cpan.org/Dist/Display.html?Queue=HTTP-LRDD
+  homepage: http://search.cpan.org/dist/HTTP-LRDD/
+  license: http://dev.perl.org/licenses/
+  repository: http://goddamn.co.uk/viewvc/perlmods/HTTP-LRDD/
+version: 0.01

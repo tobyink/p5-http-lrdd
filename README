@@ -1,0 +1,78 @@
+NAME
+    HTTP::LRDD - link-based resource descriptor discovery
+
+SYNOPSIS
+     use HTTP::LRDD;
+ 
+     my $lrdd        = HTTP::LRDD->new;
+     my @descriptors = $lrdd->discover($resource);
+
+    or
+
+     use HTTP::LRDD;
+     my @descriptors = HTTP::LRDD->discover($resource);
+
+VERSION
+    0.01
+
+DESCRIPTION
+  Import Routine
+    "use HTTP::LRDD (@predicates);"
+        When importing HTTP::LRDD, you can optionally provide a list of
+        predicate URIs (i.e. the URIs which rel values expand to). This may
+        also include IANA-registered link types, which are short tokens
+        rather than full URIs.
+
+        If you do not provide a list of predicate URIs, then a sensible
+        default set is used.
+
+  Constructors
+    "HTTP::LRDD->new(@predicates);"
+        Create a new LRDD discovery object using the given predicate URIs.
+        If @predicates is omitted, then the predicates passed to the import
+        routine are used instead.
+
+    "HTTP::LRDD->new_strict(@predicates);"
+        Create a new LRDD discovery object using the 'describedby' and
+        'lrdd' IANA-registered predicates.
+
+    "HTTP::LRDD->new_default(@predicates);"
+        Create a new LRDD discovery object using the default set of
+        predicates ('describedby', 'lrdd', 'xhv:meta' and 'rdfs:seeAlso').
+
+  Public Method
+    "$lrdd->discover($uri)"
+        Discovers a descriptor for the given URI; or if called in a list
+        context, a list of descriptors.
+
+        A descriptor is a resource that provides a description for
+        something. So, if the given URI was the web address for an image,
+        then the descriptor might be the web address for a metadata file
+        about the image. If the given URI was an e-mail address, then the
+        descriptor might be a profile document for the person to whom the
+        address belongs.
+
+        There is no guaranteed file format for the descriptor, but it is
+        often RDF, POWDER XML or XRD.
+
+        This method can also be called without an object (as a class method)
+        in which case, a temporary object is created automatically using
+        "new".
+
+BUGS
+    Please report any bugs to <http://rt.cpan.org/>.
+
+SEE ALSO
+    XRD::Parser, WWW::Finger, RDF::TrineShortcuts.
+
+    <http://www.perlrdf.org/>.
+
+AUTHOR
+    Toby Inkster <tobyink@cpan.org>.
+
+COPYRIGHT
+    Copyright 2010 Toby Inkster
+
+    This library is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
+

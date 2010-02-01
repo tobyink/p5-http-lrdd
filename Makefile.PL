@@ -16,13 +16,18 @@ license             'perl';
 
 test_requires       'Test::More' => '0.61';
 
-requires            'Carp'               => '1.00';
-requires            'Error'              => 0;
-requires            'HTTP::Link::Parser' => 0;
-requires            'HTTP::Link::Parser' => 0;
-requires            'RDF::Trine'         => '0.112';
-requires            'XML::LibXML'        => '1.60';
-requires            'URI'                => '1.30';
+requires            'Carp'                => '1.00';
+requires            'Error'               => 0;
+requires            'HTML::HTML5::Parser' => 0;
+requires            'HTML::HTML5::Sanity' => 0;
+requires            'HTTP::Link::Parser'  => 0;
+requires            'HTTP::Status'        => 0;
+requires            'RDF::RDFa::Parser'   => '0.30';
+requires            'RDF::TrineShortcuts' => 0;
+requires            'URI'                 => '1.30';
+requires            'URI::Escape'         => 0;
+requires            'XML::Atom::OWL'      => 0;
+requires            'XRD::Parser'         => 0;
 
 resources(
 	'homepage'   => "http://search.cpan.org/dist/$dist/",
