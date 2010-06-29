@@ -29,18 +29,19 @@ use HTTP::Link::Parser qw(:all);
 use HTTP::Status qw(:constants);
 use RDF::RDFa::Parser '0.30';
 use RDF::TrineShortcuts;
+use Scalar::Util qw(blessed);
 use URI;
 use URI::Escape;
 use XML::Atom::OWL;
-use XRD::Parser;
+use XRD::Parser '0.100';
 
 =head1 VERSION
 
-0.01
+0.100
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.100';
 my (@Predicates, @MediaTypes);
 
 BEGIN
@@ -79,7 +80,7 @@ sub import
 
 =over 4
 
-=item C<< HTTP::LRDD->new(@predicates); >>
+=item C<< HTTP::LRDD->new(@predicates) >>
 
 Create a new LRDD discovery object using the given predicate URIs.
 If @predicates is omitted, then the predicates passed to the import
@@ -94,15 +95,10 @@ sub new
 	
 	$self->{'predicates'} = @_ ? \@_ : \@Predicates;
 	
-	$self->{'ua'} = LWP::UserAgent->new;
-	$self->_ua->agent(sprintf('%s/%s ', __PACKAGE__, $VERSION));
-	$self->_ua->default_header('Accept' => (join ', ', @MediaTypes));
-	$self->_ua->max_redirect(0);
-	
 	return $self;
 }
 
-=item C<< HTTP::LRDD->new_strict(@predicates); >>
+=item C<< HTTP::LRDD->new_strict >>
 
 Create a new LRDD discovery object using the 'describedby' and
 'lrdd' IANA-registered predicates.
@@ -115,7 +111,7 @@ sub new_strict
 	return $class->new(qw(describedby lrdd));
 }
 
-=item C<< HTTP::LRDD->new_default(@predicates); >>
+=item C<< HTTP::LRDD->new_default >>
 
 Create a new LRDD discovery object using the default set of
 predicates ('describedby', 'lrdd', 'xhv:meta' and 'rdfs:seeAlso').
@@ -130,30 +126,27 @@ sub new_default
 	return $class->new(qw(describedby lrdd http://www.w3.org/1999/xhtml/vocab#meta http://www.w3.org/2000/01/rdf-schema#seeAlso));
 }
 
-=head2 Public Method
+=head2 Public Methods
 
 =over 4
 
-=item C<< $lrdd->discover($uri) >>
+=item C<< $lrdd->discover($resource_uri) >>
 
-Discovers a descriptor for the given URI; or if called in a list
+Discovers a descriptor for the given resource; or if called in a list
 context, a list of descriptors.
 
 A descriptor is a resource that provides a description for something.
-So, if the given URI was the web address for an image, then the
-descriptor might be the web address for a metadata file about the
+So, if the given resource URI was the web address for an image, then
+the descriptor might be the web address for a metadata file about the
 image. If the given URI was an e-mail address, then the descriptor
-might be a profile document for the person to whom the address
-belongs.
+might be a profile document for the person to whom the address belongs.
 
 There is no guaranteed file format for the descriptor, but it is
 often RDF, POWDER XML or XRD.
 
-This method can also be called without an object (as a class
-method) in which case, a temporary object is created automatically
-using C<< new >>.
-
-=back
+This method can also be called without an object (as a class method)
+in which case, a temporary object is created automatically using
+C<< new >>.
 
 =cut
 
@@ -163,107 +156,92 @@ sub discover
 	my $uri  = shift;
 	my $list = wantarray;
 	
-	$self = $self->new( @Predicates )
-		unless ref $self;
+	$self = $self->new
+		unless blessed($self) && $self->isa(__PACKAGE__);
 
+	my (@results, $rdfa, $rdfx);
 	my $model    = rdf_parse();
-	my $response = $self->_ua->head($uri);
-	
-	# Parse HTTP 'Link' headers.
-	parse_links_into_model($response, $model);
-	
-	if ($response->code eq HTTP_SEE_OTHER) # 303 Redirect
+
+	if ($uri =~ /^https?:/i)
 	{
-		my $seeother = URI->new_abs(
-			$response->header('Location'),
-			URI->new($uri));
+		my $response = $self->_ua->head($uri);
 		
-		$model->add_hashref({
-			$uri => {
-				'http://www.w3.org/2000/01/rdf-schema#seeAlso' => [
-						{ 'value' => "$seeother" , 'type' => 'uri' },
-					],
-				},
-			});
-	}
-	
-	# Parse as RDFa, if the response is RDFa.
-	($response, my $rdfa) = $self->_process_rdfa($response, $model, $uri);
-	
-	# If the response was not RDFa, try parsing as RDF.
-	($response, my $rdfx) = $self->_process_rdf($response, $model, $uri)
-		unless defined $rdfa;
+		# Parse HTTP 'Link' headers.
+		parse_links_into_model($response, $model);
 		
-	my @results;
-	
-	my @p;
-	foreach my $p (@{ $self->{'predicates'} })
-	{
-		push @p, sprintf('{ <%s> <%s> ?descriptor . }',
-			$uri, HTTP::Link::Parser::relationship_uri($p));
-	}
-	my $sparql = $list ?
-		'SELECT DISTINCT ?descriptor WHERE { '.(join ' UNION ', @p).' }' :
-		'SELECT DISTINCT ?descriptor WHERE { OPTIONAL '.(join ' OPTIONAL ', @p).' }';
+		if ($response->code eq HTTP_SEE_OTHER) # 303 Redirect
+		{
+			my $seeother = URI->new_abs(
+				$response->header('Location'),
+				URI->new($uri));
+			
+			$model->add_hashref({
+				$uri => {
+					'http://www.w3.org/2000/01/rdf-schema#seeAlso' => [
+							{ 'value' => "$seeother" , 'type' => 'uri' },
+						],
+					},
+				});
+		}
 		
-	my $iterator = rdf_query($sparql, $model);
-	while (my $row = $iterator->next)
-	{
-		push @results, $row->{'descriptor'}->uri
-			if defined $row->{'descriptor'}
-			&& $row->{'descriptor'}->is_resource;
-	}
-	if (@results)
-	{
-		return $list ? @results : $results[0];
+		# Parse as RDFa, if the response is RDFa.
+		($response, $rdfa) = $self->_cond_parse_rdfa($response, $model, $uri);
+		
+		# If the response was not RDFa, try parsing as RDF.
+		($response, $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
+			unless defined $rdfa;
+								
+		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
+		while (my $row = $iterator->next)
+		{
+			push @results, $row->{'descriptor'}->uri
+				if defined $row->{'descriptor'}
+				&& $row->{'descriptor'}->is_resource;
+		}
+		if (@results)
+		{
+			return $list ? @results : $results[0];
+		}
 	}
 	
 	# No results. That's bad news. As a last ditch attempt, try host-meta.
 	my $hostmeta = XRD::Parser->hostmeta($uri);
-	$hostmeta->consume;
-
-	# First try original query.
-	$iterator = rdf_query($sparql, $hostmeta->graph);
-	while (my $row = $iterator->next)
+	if (blessed($hostmeta))
 	{
-		push @results, $row->{'descriptor'}->uri
-			if defined $row->{'descriptor'}
-			&& $row->{'descriptor'}->is_resource;
-	}
-	if (@results)
-	{
-		return $list ? @results : $results[0];
-	}
-
-	# Then try using host-meta URI templates.
-	my $hosturi = XRD::Parser->URI_HOST . URI->new($uri)->host;
-	@p = ();
-	foreach my $p (@{ $self->{'predicates'} })
-	{
-		push @p, sprintf('{ <%s> <%s%s> ?descriptor . }',
-			$hosturi, XRD::Parser->SCHEME_TMPL, HTTP::Link::Parser::relationship_uri($p));
-	}
-	$sparql = $list ?
-		'SELECT DISTINCT ?descriptor WHERE { '.(join ' UNION ', @p).' }' :
-		'SELECT DISTINCT ?descriptor WHERE { OPTIONAL '.(join ' OPTIONAL ', @p).' }';
-
-	$iterator = rdf_query($sparql, $hostmeta->graph);
-	while (my $row = $iterator->next)
-	{
-		if (defined $row->{'descriptor'}
-		&&  $row->{'descriptor'}->is_literal
-		&&  $row->{'descriptor'}->literal_datatype eq (XRD::Parser->URI_XRD.'URITemplate'))
+		$hostmeta->consume;
+		
+		# First try original query.
+		my $iterator = rdf_query($self->_make_sparql($uri, $list), $hostmeta->graph);
+		while (my $row = $iterator->next)
 		{
-			my $u = $row->{'descriptor'}->literal_value;
-			$u =~ s/\{uri\}/uri_escape($uri)/ie;
-			push @results, $u;
+			push @results, $row->{'descriptor'}->uri
+				if defined $row->{'descriptor'}
+				&& $row->{'descriptor'}->is_resource;
+		}
+		if (@results)
+		{
+			return $list ? @results : $results[0];
+		}
+
+		# Then try using host-meta URI templates.
+		$iterator = rdf_query($self->_make_sparql_t($uri, $list), $hostmeta->graph);
+		while (my $row = $iterator->next)
+		{
+			if (defined $row->{'descriptor'}
+			&&  $row->{'descriptor'}->is_literal
+			&&  $row->{'descriptor'}->literal_datatype eq (XRD::Parser->URI_XRD.'URITemplate'))
+			{
+				my $u = $row->{'descriptor'}->literal_value;
+				$u =~ s/\{uri\}/uri_escape($uri)/ie;
+				push @results, $u;
+			}
+		}
+		if (@results)
+		{
+			return $list ? @results : $results[0];
 		}
 	}
-	if (@results)
-	{
-		return $list ? @results : $results[0];
-	}
-
+	
 	# Argh! - well, at least the URI itself was in a format capable
 	# of providing some metadata.
 	if ($rdfa || $rdfx)
@@ -274,8 +252,128 @@ sub discover
 	return undef;
 }
 
+=item C<< $lrdd->parse($descriptor_uri) >>
 
-sub _process_rdfa
+Parses a descriptor in XRD or RDF (RDF/XML, RDFa, Turtle, etc).
+
+Returns an RDF::Trine::Model or undef if unable to process.
+
+This method can also be called without an object (as a class method)
+in which case, a temporary object is created automatically using
+C<< new >>.
+
+=cut
+
+sub parse
+{
+	my $self = shift;
+	my $uri  = shift or return undef;
+
+	$self = $self->new
+		unless blessed($self) && $self->isa(__PACKAGE__);
+	
+	unless (blessed($self->{'cache'}->{$uri})
+	&& $self->{'cache'}->{$uri}->isa('RDF::Trine::Model'))
+	{
+		my $response = $self->_ua->get($uri);
+		my $model    = rdf_parse();
+		
+		# Parse as RDFa, if the response is RDFa.
+		($response, my $rdfa) = $self->_cond_parse_rdfa($response, $model, $uri);
+		
+		# If the response was not RDFa, try parsing as RDF.
+		($response, my $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
+			unless defined $rdfa;
+			
+		# If the response was not RDFa, try parsing as RDF.
+		($response, my $xrd) = $self->_cond_parse_xrd($response, $model, $uri)
+			unless defined $rdfa || defined $rdfx;
+	}
+	
+	return $self->{'cache'}->{$uri};
+}
+
+=item C<< $lrdd->process($resource_uri) >>
+
+Performs the equivalent of C<discover> and C<parse> in one easy step.
+
+Calls C<discover> in a non-list context, so only the first descriptor
+is used.
+
+=cut
+
+sub process
+{
+	my $self = shift;
+	my $uri  = shift;
+
+	$self = $self->new
+		unless blessed($self) && $self->isa(__PACKAGE__);
+		
+	my $descriptor = $self->discover($uri);
+	return $self->parse($descriptor);
+}
+
+=item C<< $lrdd->process_all($resource_uri) >>
+
+Performs the equivalent of C<discover> and C<parse> in one easy step.
+
+Calls C<discover> in a list context, so multiple descriptors are
+combined into the resulting graph.
+
+=cut
+
+sub process_all
+{
+	my $self = shift;
+	my $uri  = shift;
+
+	$self = $self->new
+		unless blessed($self) && $self->isa(__PACKAGE__);
+		
+	my @descriptors = $self->discover($uri);
+	my $model       = $self->parse($uri);
+	
+	foreach my $descriptor (@descriptors)
+	{
+		my $description = $self->parse($descriptor);
+		rdf_parse($description, model=>$model);
+	}
+	
+	return $model;
+}
+
+sub _make_sparql
+{
+	my ($self, $uri, $list) = @_;
+
+	my @p;
+	foreach my $p (@{ $self->{'predicates'} })
+	{
+		push @p, sprintf('{ <%s> <%s> ?descriptor . }',
+			$uri, HTTP::Link::Parser::relationship_uri($p));
+	}
+	return $list ?
+		'SELECT DISTINCT ?descriptor WHERE { '.(join ' UNION ', @p).' }' :
+		'SELECT DISTINCT ?descriptor WHERE { OPTIONAL '.(join ' OPTIONAL ', @p).' }';
+}
+
+sub _make_sparql_t
+{
+	my ($self, $uri, $list) = @_;
+	my $hosturi = XRD::Parser::host_uri( $uri );
+	my @p;
+	foreach my $p (@{ $self->{'predicates'} })
+	{
+		push @p, sprintf('{ <%s> <%s> ?descriptor . }',
+			$hosturi, XRD::Parser::template_uri(HTTP::Link::Parser::relationship_uri($p)));
+	}
+	return $list ?
+		'SELECT DISTINCT ?descriptor WHERE { '.(join ' UNION ', @p).' }' :
+		'SELECT DISTINCT ?descriptor WHERE { OPTIONAL '.(join ' OPTIONAL ', @p).' }';
+}
+
+sub _cond_parse_rdfa
 {
 	my ($self, $response, $model, $uri) = @_;
 	
@@ -284,16 +382,26 @@ sub _process_rdfa
 	
 	if ($response->content_type =~ m'^(application/atom\+xml|image/svg\+xml|application/xhtml\+xml|text/html)'i)
 	{
-		$self->_ua->max_redirect(3);
-		$response = $self->_ua->get($uri);
-		$self->_ua->max_redirect(0);
+		if (uc $response->request->method ne 'GET')
+		{
+			$self->_ua->max_redirect(3);
+			$response = $self->_ua->get($uri);
+			$self->_ua->max_redirect(0);
+		}
 	}
 	else
 	{
 		return ($response, undef);
 	}
 	
-	if ($response->content_type =~ m'^application/atom\+xml'i)
+	if ($RDF::RDFa::Parser::VERSION >= '1.09_10')
+	{
+		my $hostlang = RDF::RDFa::Parser::Config->host_from_media_type($response->content_type);
+		$rdfa_options = RDF::RDFa::Parser::Config->new($hostlang, RDF::RDFa::Parser::Config->RDFA_GUESS, 
+			atom_parser => ($response->content_type =~ m'^application/atom\+xml'i ? 1 : 0),
+			);
+	}
+	elsif ($response->content_type =~ m'^application/atom\+xml'i)
 	{
 		$rdfa_options = RDF::RDFa::Parser::OPTS_ATOM;
 		$rdfa_options->{'atom_parser'} = 1;
@@ -327,6 +435,9 @@ sub _process_rdfa
 				$rdfa_options->{'keywords'}->{$attr}->{$p}
 					= HTTP::Link::Parser::relationship_uri($p)
 					unless $p =~ /:/;
+				$rdfa_options->{'keywords'}->{'insensitive'}->{$attr}->{$p}
+					= HTTP::Link::Parser::relationship_uri($p)
+					unless $p =~ /:/;
 			}
 		}
 		
@@ -335,22 +446,26 @@ sub _process_rdfa
 		
 		my $parser = RDF::RDFa::Parser->new($rdfa_input, $response->base, $rdfa_options, $model->_store);
 		$parser->consume;
+		$self->{'cache'}->{$uri} = $model;
 		return ($response, $rdfa_options);
 	}
 	
 	return ($response, undef);
 }
 
-sub _process_rdf
+sub _cond_parse_rdf
 {
 	my ($self, $response, $model, $uri) = @_;
 	my $type;
 	
 	if ($response->content_type =~ m'^(application/rdf\+xml|(application|text)/(x-)?(rdf\+)?(turtle|n3|json))'i)
 	{
-		$self->_ua->max_redirect(3);
-		$response = $self->_ua->get($uri);
-		$self->_ua->max_redirect(0);
+		if (uc $response->request->method ne 'GET')
+		{
+			$self->_ua->max_redirect(3);
+			$response = $self->_ua->get($uri);
+			$self->_ua->max_redirect(0);
+		}
 		
 		$type = 'Turtle';
 		$type = 'RDFXML'  if $response->content_type =~ /rdf.xml/;
@@ -362,16 +477,53 @@ sub _process_rdf
 	}
 	
 	rdf_parse($response->decoded_content, type=>$type, model=>$model, base=>$response->base);
+	$self->{'cache'}->{$uri} = $model;
 	return ($response, 1);
+}
+
+sub _cond_parse_xrd
+{
+	my ($self, $response, $model, $uri) = @_;
+	my $type;
+	
+	if ($response->content_type =~ m'^(text/plain|application/octet-stream|application/xrd\+xml|(application|text)/xml)'i)
+	{
+		if (uc $response->request->method ne 'GET')
+		{
+			$self->_ua->max_redirect(3);
+			$response = $self->_ua->get($uri);
+			$self->_ua->max_redirect(0);
+		}
+	}
+	else
+	{
+		return ($response, undef);
+	}
+	
+	my $xrd = XRD::Parser->new($response->decoded_content, $response->base, {loose_mime=>1}, $model->_store);
+	$xrd->consume;
+	$self->{'cache'}->{$uri} = $model;
+	return ($response, $xrd);
 }
 
 sub _ua
 {
 	my $self = shift;
+	
+	unless (defined $self->{'ua'})
+	{
+		$self->{'ua'} = LWP::UserAgent->new;
+		$self->_ua->agent(sprintf('%s/%s ', __PACKAGE__, $VERSION));
+		$self->_ua->default_header('Accept' => (join ', ', @MediaTypes));
+		$self->_ua->max_redirect(0);
+	}
+	
 	return $self->{'ua'};
 }
 
 1;
+
+=back
 
 =head1 BUGS
 

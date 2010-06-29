@@ -1,10 +1,31 @@
 use lib "lib";
+use lib "../XRD-Parser/lib";
 use Data::Dumper;
 use HTTP::LRDD;
+use RDF::TrineShortcuts -methods;
 
 my $lrdd = HTTP::LRDD->new;
-my @r    = $lrdd->discover('http://gmail.com/foo');
+my $output = {};
+foreach my $uri (qw(acct:bradfitz@gmail.com http://tobyinkster.co.uk/ acct:chris@chrisvannoy.com mailto:chris@chrisvannoy.com))
+{	
+	my @r    = $lrdd->discover($uri);
+	$output->{$uri}->{'descriptors'} = \@r;
+	foreach my $d (@r)
+	{
+		my $model = $lrdd->parse($d);
+		if ($model)
+		{
+			push @{$output->{$uri}->{'statement_counts'}}, $model->count_statements;
+#			push @{$output->{$uri}->{'graphs'}}, $model->string;
+		}
+		else
+		{
+			push @{$output->{$uri}->{'statement_counts'}}, -1;
+#			push @{$output->{$uri}->{'graphs'}}, '#';
+		}
+	}
+}
 
-print Dumper( \@r );
+print Dumper( $output );
 
 # XRD::Parser::hostmeta - check HTTPS before HTTP.
