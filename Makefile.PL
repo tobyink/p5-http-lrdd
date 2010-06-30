@@ -24,6 +24,7 @@ requires            'HTTP::Link::Parser'  => 0;
 requires            'HTTP::Status'        => 0;
 requires            'RDF::RDFa::Parser'   => '0.30';
 requires            'RDF::TrineShortcuts' => 0;
+requires            'Scalar::Util'        => 0;
 requires            'URI'                 => '1.30';
 requires            'URI::Escape'         => 0;
 requires            'XML::Atom::OWL'      => 0;

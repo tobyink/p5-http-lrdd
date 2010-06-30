@@ -10,11 +10,11 @@ HTTP::LRDD - link-based resource descriptor discovery
  
  my $lrdd        = HTTP::LRDD->new;
  my @descriptors = $lrdd->discover($resource);
-
-or 
-
- use HTTP::LRDD;
- my @descriptors = HTTP::LRDD->discover($resource);
+ foreach my $descriptor (@descriptors)
+ {
+   my $description = $lrdd->parse($descriptor);
+   # $description is an RDF::Trine::Model
+ }
 
 =cut
 
@@ -141,8 +141,27 @@ the descriptor might be the web address for a metadata file about the
 image. If the given URI was an e-mail address, then the descriptor
 might be a profile document for the person to whom the address belongs.
 
+The following sources are checked (in order) to find links to
+descriptors.
+
+=over 4
+
+=item * HTTP response headers ("Link" header; "303 See Other" status)
+
+=item * HTTP response message (RDF or RDFa)
+
+=item * https://HOSTNAME/.well-known/host-meta
+
+=item * http://HOSTNAME/.well-known/host-meta
+
+=back
+
+If none of the above is able to yield a link to a descriptor, then
+the resource URI itself may be returned if it is in RDF or RDFa
+format (i.e. potentially self-describing).
+
 There is no guaranteed file format for the descriptor, but it is
-often RDF, POWDER XML or XRD.
+usually RDF, POWDER XML or XRD.
 
 This method can also be called without an object (as a class method)
 in which case, a temporary object is created automatically using
@@ -160,11 +179,12 @@ sub discover
 		unless blessed($self) && $self->isa(__PACKAGE__);
 
 	my (@results, $rdfa, $rdfx);
-	my $model    = rdf_parse();
 
+	# STEP 1: check the HTTP headers for a descriptor link
 	if ($uri =~ /^https?:/i)
 	{
 		my $response = $self->_ua->head($uri);
+		my $model    = rdf_parse();
 		
 		# Parse HTTP 'Link' headers.
 		parse_links_into_model($response, $model);
@@ -183,14 +203,7 @@ sub discover
 					},
 				});
 		}
-		
-		# Parse as RDFa, if the response is RDFa.
-		($response, $rdfa) = $self->_cond_parse_rdfa($response, $model, $uri);
-		
-		# If the response was not RDFa, try parsing as RDF.
-		($response, $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
-			unless defined $rdfa;
-								
+
 		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
 		while (my $row = $iterator->next)
 		{
@@ -198,13 +211,34 @@ sub discover
 				if defined $row->{'descriptor'}
 				&& $row->{'descriptor'}->is_resource;
 		}
-		if (@results)
+		
+		# Bypass further processing if we've got a result and we only wanted one!
+		return $results[0] if @results && !$list;
+	}
+
+	# STEP 2: check the HTTP body (RDF) for a descriptor link
+	if ($uri =~ /^https?:/i)
+	{
+		# Parse as RDFa, if the response is RDFa.
+		($response, $rdfa) = $self->_cond_parse_rdfa($response, $model, $uri);
+		
+		# If the response was not RDFa, try parsing as RDF.
+		($response, $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
+			unless defined $rdfa;
+
+		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
+		while (my $row = $iterator->next)
 		{
-			return $list ? @results : $results[0];
+			push @results, $row->{'descriptor'}->uri
+				if defined $row->{'descriptor'}
+				&& $row->{'descriptor'}->is_resource;
 		}
+		
+		# Bypass further processing if we've got a result and we only wanted one!
+		return $results[0] if @results && !$list;
 	}
 	
-	# No results. That's bad news. As a last ditch attempt, try host-meta.
+	# STEP 3: try host-meta.
 	my $hostmeta = XRD::Parser->hostmeta($uri);
 	if (blessed($hostmeta))
 	{
@@ -218,11 +252,7 @@ sub discover
 				if defined $row->{'descriptor'}
 				&& $row->{'descriptor'}->is_resource;
 		}
-		if (@results)
-		{
-			return $list ? @results : $results[0];
-		}
-
+		
 		# Then try using host-meta URI templates.
 		$iterator = rdf_query($self->_make_sparql_t($uri, $list), $hostmeta->graph);
 		while (my $row = $iterator->next)
@@ -236,19 +266,26 @@ sub discover
 				push @results, $u;
 			}
 		}
-		if (@results)
-		{
-			return $list ? @results : $results[0];
-		}
 	}
 	
-	# Argh! - well, at least the URI itself was in a format capable
-	# of providing some metadata.
+	# STEP 4: the resource may be self-describing
 	if ($rdfa || $rdfx)
 	{
-		return $list ? ($uri) : $uri;
+		my $data = $self->parse($uri);
+		
+		# only add $uri to @results
+		#    if we're completely desparate,
+		#    or it seems to provide something useful.
+		push @results, $uri
+			if !@results
+			|| $data->count_statements(RDF::Trine::Node::Resource->new($uri), undef, undef);
 	}
 	
+	if (@results)
+	{
+		return $list ? @results : $results[0];
+	}
+
 	return undef;
 }
 
@@ -337,7 +374,7 @@ sub process_all
 	foreach my $descriptor (@descriptors)
 	{
 		my $description = $self->parse($descriptor);
-		rdf_parse($description, model=>$model);
+		rdf_parse($description, model=>$model); # merge
 	}
 	
 	return $model;
@@ -393,7 +430,9 @@ sub _cond_parse_rdfa
 	{
 		return ($response, undef);
 	}
-	
+
+	$response->is_success or return ($response, undef);
+
 	if ($RDF::RDFa::Parser::VERSION >= '1.09_10')
 	{
 		my $hostlang = RDF::RDFa::Parser::Config->host_from_media_type($response->content_type);
@@ -475,7 +514,9 @@ sub _cond_parse_rdf
 	{
 		return ($response, undef);
 	}
-	
+
+	$response->is_success or return ($response, undef);
+
 	rdf_parse($response->decoded_content, type=>$type, model=>$model, base=>$response->base);
 	$self->{'cache'}->{$uri} = $model;
 	return ($response, 1);
@@ -499,6 +540,8 @@ sub _cond_parse_xrd
 	{
 		return ($response, undef);
 	}
+
+	$response->is_success or return ($response, undef);
 	
 	my $xrd = XRD::Parser->new($response->decoded_content, $response->base, {loose_mime=>1}, $model->_store);
 	$xrd->consume;
