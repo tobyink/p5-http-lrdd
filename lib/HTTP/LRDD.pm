@@ -27,21 +27,21 @@ use HTML::HTML5::Parser;
 use HTML::HTML5::Sanity;
 use HTTP::Link::Parser qw(:all);
 use HTTP::Status qw(:constants);
-use RDF::RDFa::Parser '0.30';
+use RDF::RDFa::Parser;
 use RDF::TrineShortcuts;
 use Scalar::Util qw(blessed);
 use URI;
 use URI::Escape;
 use XML::Atom::OWL;
-use XRD::Parser '0.100';
+use XRD::Parser '0.101';
 
 =head1 VERSION
 
-0.100
+0.102
 
 =cut
 
-our $VERSION = '0.100';
+our $VERSION = '0.102';
 my (@Predicates, @MediaTypes);
 
 BEGIN
@@ -51,6 +51,11 @@ BEGIN
 }
 
 =head1 DESCRIPTION
+
+Note: the LRDD specification has ceased to be, with some parts being merged into
+the host-meta Internet Draft. This CPAN module will go in its own direction,
+bundling up best-practice techniques for discovering links and descriptors for a
+given URI.
 
 =head2 Import Routine
 
@@ -157,8 +162,8 @@ descriptors.
 =back
 
 If none of the above is able to yield a link to a descriptor, then
-the resource URI itself may be returned if it is in RDF or RDFa
-format (i.e. potentially self-describing).
+the resource URI itself may be returned if it is in a self-describing
+format (e.g. RDF).
 
 There is no guaranteed file format for the descriptor, but it is
 usually RDF, POWDER XML or XRD.
@@ -178,12 +183,12 @@ sub discover
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
 
-	my (@results, $rdfa, $rdfx);
+	my (@results, $rdfa, $rdfx, $response);
 
 	# STEP 1: check the HTTP headers for a descriptor link
 	if ($uri =~ /^https?:/i)
 	{
-		my $response = $self->_ua->head($uri);
+		$response = $self->_ua->head($uri);
 		my $model    = rdf_parse();
 		
 		# Parse HTTP 'Link' headers.
@@ -219,6 +224,8 @@ sub discover
 	# STEP 2: check the HTTP body (RDF) for a descriptor link
 	if ($uri =~ /^https?:/i)
 	{
+		my $model = rdf_parse();
+		
 		# Parse as RDFa, if the response is RDFa.
 		($response, $rdfa) = $self->_cond_parse_rdfa($response, $model, $uri);
 		
@@ -235,17 +242,41 @@ sub discover
 		}
 		
 		# Bypass further processing if we've got a result and we only wanted one!
+		return $results[0] if @results && !$list;		
+	}
+
+	# STEP 2a: AtomOWL doesn't use <id> as a subject URI.
+	if (defined $rdfa && $rdfa->{'atom_parser'} && blessed($self->{'cache'}->{$uri}))
+	{
+		my $iterator = rdf_query($self->_make_sparql_atomowl($uri, $list), $self->{'cache'}->{$uri});
+		while (my $row = $iterator->next)
+		{
+			push @results, $row->{'descriptor'}->uri
+				if defined $row->{'descriptor'}
+				&& $row->{'descriptor'}->is_resource;
+		}
+		
+		# Bypass further processing if we've got a result and we only wanted one!
 		return $results[0] if @results && !$list;
 	}
 	
 	# STEP 3: try host-meta.
-	my $hostmeta = XRD::Parser->hostmeta($uri);
-	if (blessed($hostmeta))
+	my $hostmeta_location = XRD::Parser::hostmeta_location($uri);
+	unless (blessed($self->{'cache'}->{$hostmeta_location}))
 	{
-		$hostmeta->consume;
+		eval
+		{
+			my $hm = XRD::Parser->hostmeta($uri);
+			$hm->consume;
+			$self->{'cache'}->{$hostmeta_location} = $hm->graph;
+		};
+	}
+	if (blessed( $self->{'cache'}->{$hostmeta_location} ))
+	{
+		my $hm_graph = $self->{'cache'}->{$hostmeta_location};
 		
 		# First try original query.
-		my $iterator = rdf_query($self->_make_sparql($uri, $list), $hostmeta->graph);
+		my $iterator = rdf_query($self->_make_sparql($uri, $list), $hm_graph);
 		while (my $row = $iterator->next)
 		{
 			push @results, $row->{'descriptor'}->uri
@@ -254,7 +285,7 @@ sub discover
 		}
 		
 		# Then try using host-meta URI templates.
-		$iterator = rdf_query($self->_make_sparql_t($uri, $list), $hostmeta->graph);
+		$iterator = rdf_query($self->_make_sparql_template($uri, $list), $hm_graph);
 		while (my $row = $iterator->next)
 		{
 			if (defined $row->{'descriptor'}
@@ -395,7 +426,24 @@ sub _make_sparql
 		'SELECT DISTINCT ?descriptor WHERE { OPTIONAL '.(join ' OPTIONAL ', @p).' }';
 }
 
-sub _make_sparql_t
+sub _make_sparql_atomowl
+{
+	my ($self, $uri, $list) = @_;
+
+	my @p;
+	foreach my $p (@{ $self->{'predicates'} })
+	{
+		push @p, sprintf('{ ?feed <%s> ?descriptor . }',
+			HTTP::Link::Parser::relationship_uri($p));
+	}
+	
+	# this can be ambiguous in the face of atom:source.
+	return $list ?
+		'SELECT DISTINCT ?descriptor WHERE { ?feed a <http://bblfish.net/work/atom-owl/2006-06-06/#Feed> . { '.(join ' UNION ', @p).'} }' :
+		'SELECT DISTINCT ?descriptor WHERE { ?feed a <http://bblfish.net/work/atom-owl/2006-06-06/#Feed> . OPTIONAL '.(join ' OPTIONAL ', @p).' }';
+}
+
+sub _make_sparql_template
 {
 	my ($self, $uri, $list) = @_;
 	my $hosturi = XRD::Parser::host_uri( $uri );
@@ -568,13 +616,63 @@ sub _ua
 
 =back
 
+=head1 EXAMPLES
+
+Discover the hub address (PubSubHubub) for a feed:
+
+ my $lrdd = HTTP::LRDD->new('hub');
+ my $hub  = $lrdd->discover('http://example.net/feed.atom');
+
+Discover an author link (rel="author") from an HTML page:
+
+ my $lrdd   = HTTP::LRDD->new('author');
+ my $author = $lrdd->discover('http://example.com/page.html');
+
+(For RDF people, you should note that rel="author" is not semantically
+equivalent to the "foaf:maker" property but closer to the 
+"foaf:maker/foaf:homepage" SPARQL 1.1 property path - i.e. the rel="author"
+link destination is not a URI for the author themselves, but a page about
+the author.)
+
+If that author resource is in a machine-readable format (e.g. RDF), then
+parse the data:
+
+ my $author_data = $lrdd->parse($author);
+ 
+Or, you can combine C<discover> and C<parse>:
+
+ my $lrdd        = HTTP::LRDD->new('author');
+ my $author_data = $lrdd->process('http://example.com/page.html');
+
+Get metadata for an image:
+
+ my $lrdd = HTTP::LRDD->new;
+ my $data = $lrdd->process_all('http://example.org/flower.jpeg');
+
+As we're not passing any arguments to the constructor, we can use a shortcut:
+
+ my $data = HTTP::LRDD->process_all('http://example.org/flower.jpeg');
+ 
+Find the title of the image:
+
+ use RDF::TrineShortcuts qw':default :flatten';
+ 
+ my @results = flatten_iterator(rdf_query(
+  "SELECT ?t WHERE { <http://example.org/flower.jpeg> dc:title ?t }"));
+ if (@results) {
+   printf("The title is: %s\n", $results[0]->{'title'});
+ } else {
+   warn "Could not find title for image.";
+ }
+
 =head1 BUGS
 
 Please report any bugs to L<http://rt.cpan.org/>.
 
 =head1 SEE ALSO
 
-L<XRD::Parser>, L<WWW::Finger>, L<RDF::TrineShortcuts>.
+L<HTTP::Link::Parser>, L<XRD::Parser>, L<XML::Atom::OWL>
+L<WWW::Finger>, L<RDF::TrineShortcuts>.
 
 L<http://www.perlrdf.org/>.
 

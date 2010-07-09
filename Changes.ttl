@@ -41,6 +41,32 @@ my:v_0-100
 		dcs:item [ rdfs:label "Minor bugfixes and cleanups."@en ] 
 		] .
 
+my:v_0-101
+
+	a               :Version ;
+	dc:issued       "2010-07-03"^^xsd:date ;
+	:revision       "0.101"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.101.tar.gz> ;
+	dcs:changeset [
+			dcs:versus my:v_0-100 ;
+			dcs:item
+				[ rdfs:label "Possibly this will fix some cpan-tester fails, though I'm not entirely sure."@en ; a dcs:Bugfix ]
+		] .
+
+my:v_0-102
+
+	a               :Version ;
+	dc:issued       "2010-07-07"^^xsd:date ;
+	:revision       "0.102"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.102.tar.gz> ;
+	dcs:changeset [
+			dcs:versus my:v_0-101 ;
+			dcs:item
+				[ rdfs:label "Cache host-meta files."@en ; rdfs:comment "Cache host-meta files so that repeated calls to discover multiple resources on the same host do not cause repeated HTTP requests for it."@en ] ,
+				[ rdfs:label "Add examples to documentation."@en ] ,
+				[ rdfs:label "Improved Atom support."@en ] 
+		] .
+
 #############################################################
 
 my:project
@@ -59,7 +85,7 @@ my:project
 	:tester         toby:i ;
 	:created        "2010-01-30"^^xsd:date ;
 	:license        <http://dev.perl.org/licenses/> ;
-	:release        my:v_0-01 .
+	:release        my:v_0-01 , my:v_0-100 , my:v_0-101 , my:v_0-102 .
 
 #############################################################
 
@@ -69,6 +95,7 @@ toby:i
 	foaf:name       "Toby Inkster" ;
 	foaf:homepage   <http://tobyinkster.co.uk/> ;
 	foaf:page       <http://search.cpan.org/~tobyink/> ;
-	foaf:mbox       <mailto:tobyink@cpan.org> .
+	foaf:mbox       <mailto:tobyink@cpan.org> ;
+	<http://www.w3.org/2002/07/owl#sameAs> <http://purl.org/NET/cpan-uri/person/tobyink> .
 
 #############################################################

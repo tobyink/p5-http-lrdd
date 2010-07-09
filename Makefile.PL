@@ -28,7 +28,7 @@ requires            'Scalar::Util'        => 0;
 requires            'URI'                 => '1.30';
 requires            'URI::Escape'         => 0;
 requires            'XML::Atom::OWL'      => 0;
-requires            'XRD::Parser'         => '0.100';
+requires            'XRD::Parser'         => '0.101';
 
 resources(
 	'homepage'   => "http://search.cpan.org/dist/$dist/",

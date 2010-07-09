@@ -3,7 +3,7 @@
    xmlns:dc="http://purl.org/dc/terms/"
    xmlns:dcs="http://ontologi.es/doap-changeset#"
    xmlns:foaf="http://xmlns.com/foaf/0.1/"
-   xmlns:my="http://search.cpan.org/dist/HTTP-LRDD/#"
+   xmlns:my="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/"
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
    xmlns:toby="http://tobyinkster.co.uk/#"
@@ -12,16 +12,82 @@
   <rdf:Description rdf:about="file:///home/tai/src/perlmods/HTTP-LRDD/Changes.ttl">
     <dc:creator rdf:resource="http://tobyinkster.co.uk/#i"/>
     <dc:description xml:lang="en">Revision history for Perl extension HTTP::LRDD.</dc:description>
-    <dc:subject rdf:resource="http://search.cpan.org/dist/HTTP-LRDD/#project"/>
+    <dc:subject rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/project"/>
     <dc:title>Changes</dc:title>
   </rdf:Description>
-  <Version rdf:about="http://search.cpan.org/dist/HTTP-LRDD/#v_0_01">
-    <dc:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-02-??</dc:issued>
-    <file-release rdf:resource="http://backpan.perl.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.01.tar.gz"/>
+  <Version rdf:about="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-01">
+    <dc:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-02-01</dc:issued>
+    <file-release rdf:resource="http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.01.tar.gz"/>
     <revision rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.01</revision>
-    <rdfs:comment xml:lang="en">Original version</rdfs:comment>
+    <rdfs:label xml:lang="en">First release</rdfs:label>
   </Version>
-  <Project rdf:about="http://search.cpan.org/dist/HTTP-LRDD/#project">
+  <Version rdf:about="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-100">
+    <dcs:changeset>
+      <rdf:Description>
+        <dcs:item>
+          <dcs:Addition>
+            <rdfs:label xml:lang="en">Add a parse method to actually do something with a descriptor URI once it's been found.</rdfs:label>
+          </dcs:Addition>
+        </dcs:item>
+        <dcs:item>
+          <dcs:Addition>
+            <rdfs:label xml:lang="en">Add process and process_all methods which combine discover and parse stages.</rdfs:label>
+          </dcs:Addition>
+        </dcs:item>
+        <dcs:item>
+          <rdf:Description>
+            <rdfs:label xml:lang="en">Minor bugfixes and cleanups.</rdfs:label>
+          </rdf:Description>
+        </dcs:item>
+        <dcs:versus rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-01"/>
+      </rdf:Description>
+    </dcs:changeset>
+    <dc:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-06-30</dc:issued>
+    <file-release rdf:resource="http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.100.tar.gz"/>
+    <revision rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.100</revision>
+  </Version>
+  <Version rdf:about="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-101">
+    <dcs:changeset>
+      <rdf:Description>
+        <dcs:item>
+          <dcs:Bugfix>
+            <rdfs:label xml:lang="en">Possibly this will fix some cpan-tester fails, though I'm not entirely sure.</rdfs:label>
+          </dcs:Bugfix>
+        </dcs:item>
+        <dcs:versus rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-100"/>
+      </rdf:Description>
+    </dcs:changeset>
+    <dc:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-07-03</dc:issued>
+    <file-release rdf:resource="http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.101.tar.gz"/>
+    <revision rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.101</revision>
+  </Version>
+  <Version rdf:about="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-102">
+    <dcs:changeset>
+      <rdf:Description>
+        <dcs:item>
+          <rdf:Description>
+            <rdfs:comment xml:lang="en">Cache host-meta files so that repeated calls to discover multiple resources on the same host do not cause repeated HTTP requests for it.</rdfs:comment>
+            <rdfs:label xml:lang="en">Cache host-meta files.</rdfs:label>
+          </rdf:Description>
+        </dcs:item>
+        <dcs:item>
+          <rdf:Description>
+            <rdfs:label xml:lang="en">Add examples to documentation.</rdfs:label>
+          </rdf:Description>
+        </dcs:item>
+        <dcs:item>
+          <rdf:Description>
+            <rdfs:label xml:lang="en">Improved Atom support.</rdfs:label>
+          </rdf:Description>
+        </dcs:item>
+        <dcs:versus rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-101"/>
+      </rdf:Description>
+    </dcs:changeset>
+    <dc:issued rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-07-07</dc:issued>
+    <file-release rdf:resource="http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.102.tar.gz"/>
+    <revision rdf:datatype="http://www.w3.org/2001/XMLSchema#string">0.102</revision>
+  </Version>
+  <Project rdf:about="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/project">
     <bug-database rdf:resource="http://rt.cpan.org/Dist/Display.html?Queue=HTTP-LRDD"/>
     <created rdf:datatype="http://www.w3.org/2001/XMLSchema#date">2010-01-30</created>
     <developer rdf:resource="http://tobyinkster.co.uk/#i"/>
@@ -32,7 +98,10 @@
     <maintainer rdf:resource="http://tobyinkster.co.uk/#i"/>
     <name>HTTP-LRDD</name>
     <programming-language>Perl</programming-language>
-    <release rdf:resource="http://search.cpan.org/dist/HTTP-LRDD/#v_0_01"/>
+    <release rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-01"/>
+    <release rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-100"/>
+    <release rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-101"/>
+    <release rdf:resource="http://purl.org/NET/cpan-uri/dist/HTTP-LRDD/v_0-102"/>
     <repository>
       <SVNRepository>
         <browse rdf:resource="http://goddamn.co.uk/viewvc/perlmods/HTTP-LRDD/"/>
@@ -42,6 +111,7 @@
     <tester rdf:resource="http://tobyinkster.co.uk/#i"/>
   </Project>
   <foaf:Person rdf:about="http://tobyinkster.co.uk/#i">
+    <ns1:sameAs xmlns:ns1="http://www.w3.org/2002/07/owl#" rdf:resource="http://purl.org/NET/cpan-uri/person/tobyink"/>
     <foaf:homepage rdf:resource="http://tobyinkster.co.uk/"/>
     <foaf:mbox rdf:resource="mailto:tobyink@cpan.org"/>
     <foaf:name>Toby Inkster</foaf:name>
