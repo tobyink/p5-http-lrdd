@@ -38,4 +38,4 @@ resources:
   homepage: http://search.cpan.org/dist/HTTP-LRDD/
   license: http://dev.perl.org/licenses/
   repository: http://goddamn.co.uk/viewvc/perlmods/HTTP-LRDD/
-version: 0.102
+version: 0.103

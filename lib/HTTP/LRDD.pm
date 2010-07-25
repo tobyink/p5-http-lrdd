@@ -41,7 +41,7 @@ use XRD::Parser '0.101';
 
 =cut
 
-our $VERSION = '0.102';
+our $VERSION = '0.103';
 my (@Predicates, @MediaTypes);
 
 BEGIN
@@ -379,7 +379,7 @@ sub process
 		unless blessed($self) && $self->isa(__PACKAGE__);
 		
 	my $descriptor = $self->discover($uri);
-	return $self->parse($descriptor);
+	return $self->parse($descriptor) || rdf_parse();
 }
 
 =item C<< $lrdd->process_all($resource_uri) >>
@@ -400,7 +400,7 @@ sub process_all
 		unless blessed($self) && $self->isa(__PACKAGE__);
 		
 	my @descriptors = $self->discover($uri);
-	my $model       = $self->parse($uri);
+	my $model       = $self->parse($uri) || rdf_parse();
 	
 	foreach my $descriptor (@descriptors)
 	{

@@ -67,6 +67,18 @@ my:v_0-102
 				[ rdfs:label "Improved Atom support."@en ] 
 		] .
 
+my:v_0-103
+
+	a               :Version ;
+	dc:issued       "2010-07-25"^^xsd:date ;
+	:revision       "0.103"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.103.tar.gz> ;
+	dcs:changeset [
+			dcs:versus my:v_0-102;
+			dcs:item
+				[ rdfs:label "process_all() would fail in the case where the target URI itself could not be parsed as RDF or XRD."@en ; a dcs:Bugfix ] 
+		] .
+
 #############################################################
 
 my:project
@@ -85,7 +97,7 @@ my:project
 	:tester         toby:i ;
 	:created        "2010-01-30"^^xsd:date ;
 	:license        <http://dev.perl.org/licenses/> ;
-	:release        my:v_0-01 , my:v_0-100 , my:v_0-101 , my:v_0-102 .
+	:release        my:v_0-01 , my:v_0-100 , my:v_0-101 , my:v_0-102 , my:v_0-103 .
 
 #############################################################
 
