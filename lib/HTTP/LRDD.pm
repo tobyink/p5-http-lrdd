@@ -35,19 +35,13 @@ use URI::Escape;
 use XML::Atom::OWL;
 use XRD::Parser '0.101';
 
-=head1 VERSION
-
-0.102
-
-=cut
-
 our $VERSION = '0.103';
 my (@Predicates, @MediaTypes);
 
 BEGIN
 {
-	@Predicates = qw(describedby lrdd http://www.w3.org/1999/xhtml/vocab#meta http://www.w3.org/2000/01/rdf-schema#seeAlso);
-	@MediaTypes = qw(application/xrd+xml application/rdf+xml text/turtle application/atom+xml;q=0.9 application/xhtml+xml;q=0.9 text/html;q=0.9 */*;q=0.1)
+	@Predicates = ('describedby', 'lrdd', 'http://www.w3.org/1999/xhtml/vocab#meta', 'http://www.w3.org/2000/01/rdf-schema#seeAlso');
+	@MediaTypes = ('application/xrd+xml', 'application/rdf+xml', 'text/turtle', 'application/atom+xml;q=0.9', 'application/xhtml+xml;q=0.9', 'text/html;q=0.9', '*/*;q=0.1');
 }
 
 =head1 DESCRIPTION
@@ -353,7 +347,7 @@ sub parse
 		($response, my $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
 			unless defined $rdfa;
 			
-		# If the response was not RDFa, try parsing as RDF.
+		# If the response was not RDFa or another type of RDF, try parsing as XRD.
 		($response, my $xrd) = $self->_cond_parse_xrd($response, $model, $uri)
 			unless defined $rdfa || defined $rdfx;
 	}
@@ -668,6 +662,14 @@ Find the title of the image:
 =head1 BUGS
 
 Please report any bugs to L<http://rt.cpan.org/>.
+
+B<Note>: many problems can stem from servers that send incorrect
+C<Content-Type> headers. If you send an XRD file as "text/html",
+then this module will not guess what you're doing - it will assume
+the file is really HTML, and inspect it for RDFa. For host-meta
+files, this module is slightly more relaxed, as there's a strong
+assumption that they are XRD... but YOU SHOULD NOT RELY ON THIS.
+If you're running a server, use the correct media type.
 
 =head1 SEE ALSO
 
