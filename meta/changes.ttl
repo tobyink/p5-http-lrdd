@@ -1,5 +1,3 @@
-#############################################################
-
 @prefix :        <http://usefulinc.com/ns/doap#> .
 @prefix dcs:     <http://ontologi.es/doap-changeset#> .
 @prefix dc:      <http://purl.org/dc/terms/> .
@@ -9,27 +7,16 @@
 @prefix toby:    <http://tobyinkster.co.uk/#> .
 @prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
 
-#############################################################
-
-<>
-
-	dc:title         "Changes" ;
-	dc:description   "Revision history for Perl extension HTTP::LRDD."@en ;
-	dc:subject       my:project ;
-	dc:creator       toby:i .
-
-#############################################################
-
+my:project :release my:v_0-01 .
 my:v_0-01
-
 	a               :Version ;
 	dc:issued       "2010-02-01"^^xsd:date ;
 	:revision       "0.01"^^xsd:string ;
 	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.01.tar.gz> ;
 	rdfs:label      "First release"@en .
 
+my:project :release my:v_0-100 .
 my:v_0-100
-
 	a               :Version ;
 	dc:issued       "2010-06-30"^^xsd:date ;
 	:revision       "0.100"^^xsd:string ;
@@ -41,8 +28,8 @@ my:v_0-100
 		dcs:item [ rdfs:label "Minor bugfixes and cleanups."@en ] 
 		] .
 
+my:project :release my:v_0-101 .
 my:v_0-101
-
 	a               :Version ;
 	dc:issued       "2010-07-03"^^xsd:date ;
 	:revision       "0.101"^^xsd:string ;
@@ -53,8 +40,8 @@ my:v_0-101
 				[ rdfs:label "Possibly this will fix some cpan-tester fails, though I'm not entirely sure."@en ; a dcs:Bugfix ]
 		] .
 
+my:project :release my:v_0-102 .
 my:v_0-102
-
 	a               :Version ;
 	dc:issued       "2010-07-07"^^xsd:date ;
 	:revision       "0.102"^^xsd:string ;
@@ -67,8 +54,8 @@ my:v_0-102
 				[ rdfs:label "Improved Atom support."@en ] 
 		] .
 
+my:project :release my:v_0-103 .
 my:v_0-103
-
 	a               :Version ;
 	dc:issued       "2010-07-25"^^xsd:date ;
 	:revision       "0.103"^^xsd:string ;
@@ -79,35 +66,19 @@ my:v_0-103
 				[ rdfs:label "process_all() would fail in the case where the target URI itself could not be parsed as RDF or XRD."@en ; a dcs:Bugfix ] 
 		] .
 
-#############################################################
+my:project :release my:v_0-104 .
+my:v_0-104
+	a               :Version ;
+	dc:issued       "2011-11-27"^^xsd:date ;
+	:revision       "0.104"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.104.tar.gz> ;
+	dcs:changeset [
+		dcs:versus my:v_0-103;
+		dcs:item   [ rdfs:label "use 5.010"@en ; a dcs:Update ] ;
+		dcs:item   [ rdfs:label "Minor tidy"@en ] ;
+		dcs:item   [ rdfs:label "Module::Package::RDF"@en ; a dcs:Packaging ] ;
+		dcs:item   [ rdfs:label "Support wdrs:describedby predicate by default."@en ; a dcs:Addition ] 
+		] .
 
-my:project
 
-	a               :Project ;
-	:name           "HTTP-LRDD" ;
-	:shortdesc      "link-based resource descriptor discovery"@en ;
-	:programming-language  "Perl" ;
-	:homepage       <https://metacpan.org/release/HTTP-LRDD> ;
-	:download-page  <https://metacpan.org/release/HTTP-LRDD> ;
-	:bug-database   <http://rt.cpan.org/Dist/Display.html?Queue=HTTP-LRDD> ;
-	:repository     [ a :SVNRepository ; :browse <http://goddamn.co.uk/svn-web/perlmods/browse/HTTP-LRDD/> ] ;
-	:maintainer     toby:i ;
-	:developer      toby:i ;
-	:documenter     toby:i ;
-	:tester         toby:i ;
-	:created        "2010-01-30"^^xsd:date ;
-	:license        <http://dev.perl.org/licenses/> ;
-	:release        my:v_0-01 , my:v_0-100 , my:v_0-101 , my:v_0-102 , my:v_0-103 .
 
-#############################################################
-
-toby:i
-
-	a               foaf:Person ;
-	foaf:name       "Toby Inkster" ;
-	foaf:homepage   <http://tobyinkster.co.uk/> ;
-	foaf:page       <https://metacpan.org/author/TOBYINK> ;
-	foaf:mbox       <mailto:tobyink@cpan.org> ;
-	<http://www.w3.org/2002/07/owl#sameAs> <http://purl.org/NET/cpan-uri/person/tobyink> .
-
-#############################################################

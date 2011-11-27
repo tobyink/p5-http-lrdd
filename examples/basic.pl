@@ -1,13 +1,12 @@
-use lib "lib";
-use lib "../XRD-Parser/lib";
 use Data::Dumper;
 use HTTP::LRDD;
 use RDF::TrineShortcuts -methods;
 
 my $lrdd = HTTP::LRDD->new;
 my $output = {};
-foreach my $uri (qw(acct:bradfitz@gmail.com http://tobyinkster.co.uk/ acct:chris@chrisvannoy.com mailto:chris@chrisvannoy.com))
+foreach my $uri (qw(acct:bradfitz@gmail.com acct:chris@chrisvannoy.com mailto:chris@chrisvannoy.com))
 {	
+	warn "URI: $uri";
 	my @r    = $lrdd->discover($uri);
 	$output->{$uri}->{'descriptors'} = \@r;
 	foreach my $d (@r)

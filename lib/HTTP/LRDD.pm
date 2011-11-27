@@ -1,73 +1,46 @@
-#!/usr/bin/perl
-
-=head1 NAME
-
-HTTP::LRDD - link-based resource descriptor discovery
-
-=head1 SYNOPSIS
-
- use HTTP::LRDD;
- 
- my $lrdd        = HTTP::LRDD->new;
- my @descriptors = $lrdd->discover($resource);
- foreach my $descriptor (@descriptors)
- {
-   my $description = $lrdd->parse($descriptor);
-   # $description is an RDF::Trine::Model
- }
-
-=cut
-
 package HTTP::LRDD;
 
 use strict;
-use 5.008;
+use 5.010;
 
-use HTML::HTML5::Parser;
-use HTML::HTML5::Sanity;
-use HTTP::Link::Parser qw(:all);
-use HTTP::Status qw(:constants);
-use RDF::RDFa::Parser;
-use RDF::TrineShortcuts;
-use Scalar::Util qw(blessed);
-use URI;
-use URI::Escape;
-use XML::Atom::OWL;
-use XRD::Parser '0.101';
+use HTML::HTML5::Parser 0.107;
+use HTML::HTML5::Sanity 0.102;
+use HTTP::Link::Parser 0.102 qw(:all);
+use HTTP::Status 0 qw(:constants);
+use RDF::RDFa::Parser 1.096;
+use RDF::TrineShortcuts 0.104;
+use Scalar::Util 0 qw(blessed);
+use UNIVERSAL::AUTHORITY 0;
+use URI 0;
+use URI::Escape 0;
+use XML::Atom::OWL 0.100;
+use XRD::Parser 0.101;
 
-our $VERSION = '0.103';
-my (@Predicates, @MediaTypes);
+my (@Predicates, @_Predicates, @MediaTypes);
 
 BEGIN
 {
-	@Predicates = ('describedby', 'lrdd', 'http://www.w3.org/1999/xhtml/vocab#meta', 'http://www.w3.org/2000/01/rdf-schema#seeAlso');
-	@MediaTypes = ('application/xrd+xml', 'application/rdf+xml', 'text/turtle', 'application/atom+xml;q=0.9', 'application/xhtml+xml;q=0.9', 'text/html;q=0.9', '*/*;q=0.1');
+	$HTTP::LRDD::AUTHORITY = 'cpan:TOBYINK';
+	$HTTP::LRDD::VERSION   = '0.104';
+	
+	@Predicates = (
+		'describedby',
+		'lrdd',
+		'http://www.w3.org/2007/05/powder-s#describedby',
+		'http://www.w3.org/1999/xhtml/vocab#meta',
+		'http://www.w3.org/2000/01/rdf-schema#seeAlso',
+		);
+	@_Predicates = @Predicates;
+	@MediaTypes = (
+		'application/xrd+xml',
+		'application/rdf+xml',
+		'text/turtle',
+		'application/atom+xml;q=0.9',
+		'application/xhtml+xml;q=0.9',
+		'text/html;q=0.9',
+		'*/*;q=0.1',
+		);
 }
-
-=head1 DESCRIPTION
-
-Note: the LRDD specification has ceased to be, with some parts being merged into
-the host-meta Internet Draft. This CPAN module will go in its own direction,
-bundling up best-practice techniques for discovering links and descriptors for a
-given URI.
-
-=head2 Import Routine
-
-=over 4
-
-=item C<< use HTTP::LRDD (@predicates); >>
-
-When importing HTTP::LRDD, you can optionally provide a list of
-predicate URIs (i.e. the URIs which rel values expand to). This
-may also include IANA-registered link types, which are short tokens
-rather than full URIs.
-
-If you do not provide a list of predicate URIs, then a sensible
-default set is used.
-
-=back
-
-=cut
 
 sub import
 {
@@ -75,34 +48,15 @@ sub import
 	@Predicates = @_ if @_;
 }
 
-=head2 Constructors
-
-=over 4
-
-=item C<< HTTP::LRDD->new(@predicates) >>
-
-Create a new LRDD discovery object using the given predicate URIs.
-If @predicates is omitted, then the predicates passed to the import
-routine are used instead.
-
-=cut
-
 sub new
 {
 	my $class   = shift;
 	my $self    = bless { }, $class;
 	
-	$self->{'predicates'} = @_ ? \@_ : \@Predicates;
+	$self->{predicates} = @_ ? \@_ : \@Predicates;
 	
 	return $self;
 }
-
-=item C<< HTTP::LRDD->new_strict >>
-
-Create a new LRDD discovery object using the 'describedby' and
-'lrdd' IANA-registered predicates.
-
-=cut
 
 sub new_strict
 {
@@ -110,63 +64,11 @@ sub new_strict
 	return $class->new(qw(describedby lrdd));
 }
 
-=item C<< HTTP::LRDD->new_default >>
-
-Create a new LRDD discovery object using the default set of
-predicates ('describedby', 'lrdd', 'xhv:meta' and 'rdfs:seeAlso').
-
-=back
-
-=cut
-
 sub new_default
 {
 	my $class   = shift;
-	return $class->new(qw(describedby lrdd http://www.w3.org/1999/xhtml/vocab#meta http://www.w3.org/2000/01/rdf-schema#seeAlso));
+	return $class->new(@_Predicates);
 }
-
-=head2 Public Methods
-
-=over 4
-
-=item C<< $lrdd->discover($resource_uri) >>
-
-Discovers a descriptor for the given resource; or if called in a list
-context, a list of descriptors.
-
-A descriptor is a resource that provides a description for something.
-So, if the given resource URI was the web address for an image, then
-the descriptor might be the web address for a metadata file about the
-image. If the given URI was an e-mail address, then the descriptor
-might be a profile document for the person to whom the address belongs.
-
-The following sources are checked (in order) to find links to
-descriptors.
-
-=over 4
-
-=item * HTTP response headers ("Link" header; "303 See Other" status)
-
-=item * HTTP response message (RDF or RDFa)
-
-=item * https://HOSTNAME/.well-known/host-meta
-
-=item * http://HOSTNAME/.well-known/host-meta
-
-=back
-
-If none of the above is able to yield a link to a descriptor, then
-the resource URI itself may be returned if it is in a self-describing
-format (e.g. RDF).
-
-There is no guaranteed file format for the descriptor, but it is
-usually RDF, POWDER XML or XRD.
-
-This method can also be called without an object (as a class method)
-in which case, a temporary object is created automatically using
-C<< new >>.
-
-=cut
 
 sub discover
 {
@@ -314,18 +216,6 @@ sub discover
 	return undef;
 }
 
-=item C<< $lrdd->parse($descriptor_uri) >>
-
-Parses a descriptor in XRD or RDF (RDF/XML, RDFa, Turtle, etc).
-
-Returns an RDF::Trine::Model or undef if unable to process.
-
-This method can also be called without an object (as a class method)
-in which case, a temporary object is created automatically using
-C<< new >>.
-
-=cut
-
 sub parse
 {
 	my $self = shift;
@@ -334,8 +224,8 @@ sub parse
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
 	
-	unless (blessed($self->{'cache'}->{$uri})
-	&& $self->{'cache'}->{$uri}->isa('RDF::Trine::Model'))
+	unless (blessed($self->{'cache'}{$uri})
+	and $self->{'cache'}{$uri}->isa('RDF::Trine::Model'))
 	{
 		my $response = $self->_ua->get($uri);
 		my $model    = rdf_parse();
@@ -352,17 +242,8 @@ sub parse
 			unless defined $rdfa || defined $rdfx;
 	}
 	
-	return $self->{'cache'}->{$uri};
+	return $self->{'cache'}{$uri};
 }
-
-=item C<< $lrdd->process($resource_uri) >>
-
-Performs the equivalent of C<discover> and C<parse> in one easy step.
-
-Calls C<discover> in a non-list context, so only the first descriptor
-is used.
-
-=cut
 
 sub process
 {
@@ -373,17 +254,8 @@ sub process
 		unless blessed($self) && $self->isa(__PACKAGE__);
 		
 	my $descriptor = $self->discover($uri);
-	return $self->parse($descriptor) || rdf_parse();
+	return $self->parse($descriptor) // rdf_parse();
 }
-
-=item C<< $lrdd->process_all($resource_uri) >>
-
-Performs the equivalent of C<discover> and C<parse> in one easy step.
-
-Calls C<discover> in a list context, so multiple descriptors are
-combined into the resulting graph.
-
-=cut
 
 sub process_all
 {
@@ -394,7 +266,7 @@ sub process_all
 		unless blessed($self) && $self->isa(__PACKAGE__);
 		
 	my @descriptors = $self->discover($uri);
-	my $model       = $self->parse($uri) || rdf_parse();
+	my $model       = $self->parse($uri) // rdf_parse();
 	
 	foreach my $descriptor (@descriptors)
 	{
@@ -475,35 +347,10 @@ sub _cond_parse_rdfa
 
 	$response->is_success or return ($response, undef);
 
-	if ($RDF::RDFa::Parser::VERSION >= '1.09_10')
-	{
-		my $hostlang = RDF::RDFa::Parser::Config->host_from_media_type($response->content_type);
-		$rdfa_options = RDF::RDFa::Parser::Config->new($hostlang, RDF::RDFa::Parser::Config->RDFA_GUESS, 
-			atom_parser => ($response->content_type =~ m'^application/atom\+xml'i ? 1 : 0),
-			);
-	}
-	elsif ($response->content_type =~ m'^application/atom\+xml'i)
-	{
-		$rdfa_options = RDF::RDFa::Parser::OPTS_ATOM;
-		$rdfa_options->{'atom_parser'} = 1;
-	}
-	elsif ($response->content_type =~ m'^image/svg\+xml'i)
-	{
-		$rdfa_options = RDF::RDFa::Parser::OPTS_SVG;
-	}
-	elsif ($response->content_type =~ m'^application/xhtml\+xml'i)
-	{
-		$rdfa_options = RDF::RDFa::Parser::OPTS_XHTML;
-	}
-	elsif ($response->content_type =~ m'^text/html'i)
-	{
-		$rdfa_options = RDF::RDFa::Parser::OPTS_HTML5;
-		$rdfa_options = RDF::RDFa::Parser::OPTS_HTML4
-			if $response->decoded_content =~ m'<!doctype\s+html\s+public\s+.-//W3C//DTD HTML 4'i;
-		
-		my $parser  = HTML::HTML5::Parser->new;
-		$rdfa_input = $parser->parse_string($response->decoded_content);
-	}
+	my $hostlang = RDF::RDFa::Parser::Config->host_from_media_type($response->content_type);
+	$rdfa_options = RDF::RDFa::Parser::Config->new($hostlang, RDF::RDFa::Parser::Config->RDFA_GUESS, 
+		atom_parser => ($response->content_type =~ m'^application/atom\+xml'i ? 1 : 0),
+		);
 	
 	if (defined $rdfa_options)
 	{
@@ -595,18 +442,145 @@ sub _ua
 {
 	my $self = shift;
 	
-	unless (defined $self->{'ua'})
+	unless (defined $self->{ua})
 	{
-		$self->{'ua'} = LWP::UserAgent->new;
-		$self->_ua->agent(sprintf('%s/%s ', __PACKAGE__, $VERSION));
-		$self->_ua->default_header('Accept' => (join ', ', @MediaTypes));
-		$self->_ua->max_redirect(0);
+		$self->{ua} = LWP::UserAgent->new;
+		$self->{ua}->agent(sprintf('%s/%s (%s) ', __PACKAGE__, __PACKAGE__->VERSION, __PACKAGE__->AUTHORITY));
+		$self->{ua}->default_header(Accept => (join ', ', @MediaTypes));
+		$self->{ua}->max_redirect(0);
 	}
 	
-	return $self->{'ua'};
+	return $self->{ua};
 }
 
 1;
+
+=head1 NAME
+
+HTTP::LRDD - link-based resource descriptor discovery
+
+=head1 SYNOPSIS
+
+ use HTTP::LRDD;
+ 
+ my $lrdd        = HTTP::LRDD->new;
+ my @descriptors = $lrdd->discover($resource);
+ foreach my $descriptor (@descriptors)
+ {
+   my $description = $lrdd->parse($descriptor);
+   # $description is an RDF::Trine::Model
+ }
+ 
+=head1 DESCRIPTION
+
+Note: the LRDD specification has ceased to be, with some parts being merged into
+the host-meta Internet Draft. This CPAN module will go in its own direction,
+bundling up best-practice techniques for discovering links and descriptors for a
+given URI.
+
+=head2 Import Routine
+
+=over 4
+
+=item C<< use HTTP::LRDD (@predicates) >>
+
+When importing HTTP::LRDD, you can optionally provide a list of
+predicate URIs (i.e. the URIs which rel values expand to). This
+may also include IANA-registered link types, which are short tokens
+rather than full URIs.
+
+If you do not provide a list of predicate URIs, then a sensible
+default set is used.
+
+=back
+
+=head2 Constructors
+
+=over 4
+
+=item C<< HTTP::LRDD->new(@predicates) >>
+
+Create a new LRDD discovery object using the given predicate URIs.
+If @predicates is omitted, then the predicates passed to the import
+routine are used instead.
+
+=item C<< HTTP::LRDD->new_strict >>
+
+Create a new LRDD discovery object using the 'describedby' and
+'lrdd' IANA-registered predicates.
+
+=item C<< HTTP::LRDD->new_default >>
+
+Create a new LRDD discovery object using the default set of
+predicates ('describedby', 'lrdd', 'wdrs:describedby', 'xhv:meta'
+and 'rdfs:seeAlso').
+
+=back
+
+=head2 Public Methods
+
+=over 4
+
+=item C<< $lrdd->discover($resource_uri) >>
+
+Discovers a descriptor for the given resource; or if called in a list
+context, a list of descriptors.
+
+A descriptor is a resource that provides a description for something.
+So, if the given resource URI was the web address for an image, then
+the descriptor might be the web address for a metadata file about the
+image. If the given URI was an e-mail address, then the descriptor
+might be a profile document for the person to whom the address belongs.
+
+The following sources are checked (in order) to find links to
+descriptors.
+
+=over 4
+
+=item * HTTP response headers ("Link" header; "303 See Other" status)
+
+=item * HTTP response message (RDF or RDFa)
+
+=item * https://HOSTNAME/.well-known/host-meta
+
+=item * http://HOSTNAME/.well-known/host-meta
+
+=back
+
+If none of the above is able to yield a link to a descriptor, then
+the resource URI itself may be returned if it is in a self-describing
+format (e.g. RDF).
+
+There is no guaranteed file format for the descriptor, but it is
+usually RDF, POWDER XML or XRD.
+
+This method can also be called without an object (as a class method)
+in which case, a temporary object is created automatically using
+C<< new >>.
+
+=item C<< $lrdd->parse($descriptor_uri) >>
+
+Parses a descriptor in XRD or RDF (RDF/XML, RDFa, Turtle, etc).
+
+Returns an RDF::Trine::Model or undef if unable to process.
+
+This method can also be called without an object (as a class method)
+in which case, a temporary object is created automatically using
+C<< new >>.
+
+=item C<< $lrdd->process($resource_uri) >>
+
+Performs the equivalent of C<discover> and C<parse> in one easy step.
+
+Calls C<discover> in a non-list context, so only the first descriptor
+is used.
+
+=item C<< $lrdd->process_all($resource_uri) >>
+
+Performs the equivalent of C<discover> and C<parse> in one easy step.
+
+Calls C<discover> in a list context, so multiple descriptors are
+combined into the resulting graph.
 
 =back
 
@@ -649,7 +623,7 @@ As we're not passing any arguments to the constructor, we can use a shortcut:
  
 Find the title of the image:
 
- use RDF::TrineShortcuts qw':default :flatten';
+ use RDF::TrineShortcuts qw/:default :flatten/;
  
  my @results = flatten_iterator(rdf_query(
   "SELECT ?t WHERE { <http://example.org/flower.jpeg> dc:title ?t }"));
@@ -682,11 +656,17 @@ L<http://www.perlrdf.org/>.
 
 Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
 
-=head1 COPYRIGHT
+=head1 COPYRIGHT AND LICENCE
 
-Copyright 2010 Toby Inkster
+Copyright 2010-2011 Toby Inkster
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
+
+=head1 DISCLAIMER OF WARRANTIES
+
+THIS PACKAGE IS PROVIDED "AS IS" AND WITHOUT ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF
+MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
 
 =cut

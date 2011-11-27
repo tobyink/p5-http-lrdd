@@ -1,5 +1,3 @@
-use lib "lib";
-use lib "../XRD-Parser/lib";
 use Data::Dumper;
 use HTTP::LRDD;
 use RDF::TrineShortcuts -methods;
