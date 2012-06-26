@@ -7,10 +7,11 @@ use HTML::HTML5::Parser 0.107;
 use HTML::HTML5::Sanity 0.102;
 use HTTP::Link::Parser 0.102 qw(:all);
 use HTTP::Status 0 qw(:constants);
+use Object::AUTHORITY 0;
+use RDF::TrineX::Functions 0 -shortcuts;
 use RDF::RDFa::Parser 1.096;
-use RDF::TrineShortcuts 0.104;
+use RDF::Query 2.900;
 use Scalar::Util 0 qw(blessed);
-use UNIVERSAL::AUTHORITY 0;
 use URI 0;
 use URI::Escape 0;
 use XML::Atom::OWL 0.100;
@@ -21,7 +22,7 @@ my (@Predicates, @_Predicates, @MediaTypes);
 BEGIN
 {
 	$HTTP::LRDD::AUTHORITY = 'cpan:TOBYINK';
-	$HTTP::LRDD::VERSION   = '0.104';
+	$HTTP::LRDD::VERSION   = '0.105';
 	
 	@Predicates = (
 		'describedby',
@@ -29,7 +30,7 @@ BEGIN
 		'http://www.w3.org/2007/05/powder-s#describedby',
 		'http://www.w3.org/1999/xhtml/vocab#meta',
 		'http://www.w3.org/2000/01/rdf-schema#seeAlso',
-		);
+	);
 	@_Predicates = @Predicates;
 	@MediaTypes = (
 		'application/xrd+xml',
@@ -39,7 +40,24 @@ BEGIN
 		'application/xhtml+xml;q=0.9',
 		'text/html;q=0.9',
 		'*/*;q=0.1',
-		);
+	);
+}
+
+sub rdf_query
+{
+	my ($sparql, $model) = @_;
+	my $result = RDF::Query->new($sparql)->execute($model);
+	
+	if ($result->is_boolean)
+		{ return $result->get_boolean }
+	elsif ($result->is_bindings)
+		{ return $result }
+	
+	$result->is_graph or die;
+	
+	my $return = RDF::Trine::Model->new;
+	$return->add_hashref( $result->as_hashref );
+	return $return;
 }
 
 sub import
@@ -88,7 +106,7 @@ sub discover
 		my $model    = rdf_parse();
 		
 		# Parse HTTP 'Link' headers.
-		parse_links_into_model($response, $model);
+		parse_links_into_model($response => $model);
 		
 		if ($response->code eq HTTP_SEE_OTHER) # 303 Redirect
 		{
@@ -213,7 +231,7 @@ sub discover
 		return $list ? @results : $results[0];
 	}
 
-	return undef;
+	return;
 }
 
 sub parse
@@ -487,10 +505,13 @@ given URI.
 When importing HTTP::LRDD, you can optionally provide a list of
 predicate URIs (i.e. the URIs which rel values expand to). This
 may also include IANA-registered link types, which are short tokens
-rather than full URIs.
+rather than full URIs. If you do not provide a list of predicate
+URIs, then a sensible default set is used.
 
-If you do not provide a list of predicate URIs, then a sensible
-default set is used.
+Because this configuration is global in nature, it is not recommended.
+It is better to supply a list of predicates to the constructor
+instead, or rely on the defaults. This feature should be regarded
+as deprecated.
 
 =back
 
@@ -623,15 +644,12 @@ As we're not passing any arguments to the constructor, we can use a shortcut:
  
 Find the title of the image:
 
- use RDF::TrineShortcuts qw/:default :flatten/;
+ use RDF::QueryX::Lazy;
  
- my @results = flatten_iterator(rdf_query(
-  "SELECT ?t WHERE { <http://example.org/flower.jpeg> dc:title ?t }"));
- if (@results) {
-   printf("The title is: %s\n", $results[0]->{'title'});
- } else {
-   warn "Could not find title for image.";
- }
+ my $image   = q<http://example.org/flower.jpeg>;
+ my $results = RDF::QueryX::Lazy
+   -> new("SELECT * WHERE { <$image> dc:title ?t }")
+   -> execute( HTTP::LRDD->process_all($image) );
 
 =head1 BUGS
 
@@ -648,7 +666,7 @@ If you're running a server, use the correct media type.
 =head1 SEE ALSO
 
 L<HTTP::Link::Parser>, L<XRD::Parser>, L<XML::Atom::OWL>
-L<WWW::Finger>, L<RDF::TrineShortcuts>.
+L<WWW::Finger>.
 
 L<http://www.perlrdf.org/>.
 
@@ -658,7 +676,7 @@ Toby Inkster E<lt>tobyink@cpan.orgE<gt>.
 
 =head1 COPYRIGHT AND LICENCE
 
-Copyright 2010-2011 Toby Inkster
+Copyright 2010-2012 Toby Inkster
 
 This library is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

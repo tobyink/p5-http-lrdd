@@ -1,1 +1,1 @@
-use inc::Module::Package 'RDF:standard';
+use inc::Module::Package 'RDF:standard 0.005';

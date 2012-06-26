@@ -80,5 +80,16 @@ my:v_0-104
 		dcs:item   [ rdfs:label "Support wdrs:describedby predicate by default."@en ; a dcs:Addition ] 
 		] .
 
+my:project :release my:v_0-105 .
+my:v_0-105
+	a               :Version ;
+	dc:issued       "2011-12-04"^^xsd:date ;
+	:revision       "0.105"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.105.tar.gz> ;
+	dcs:changeset [
+		dcs:versus my:v_0-104;
+		dcs:item   [ rdfs:label "Replace UNIVERSAL::AUTHORITY with Object::AUTHORITY."@en ] ;
+		dcs:item   [ rdfs:label "Newer version of Module::Package::RDF."@en ; a dcs:Packaging, dcs:Bugfix ]
+		] .
 
 
