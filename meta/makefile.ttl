@@ -15,6 +15,7 @@
 		"Object::AUTHORITY 0" ,
 		"RDF::RDFa::Parser 1.096" ,
 		"RDF::TrineX::Functions 0" ,
+		"RDF::Query 0",
 		"Scalar::Util 0" ,
 		"URI 0" ,
 		"URI::Escape 0" ,
