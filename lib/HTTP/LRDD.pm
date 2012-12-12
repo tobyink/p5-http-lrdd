@@ -43,7 +43,7 @@ BEGIN
 	);
 }
 
-sub rdf_query
+sub __rdf_query
 {
 	my ($sparql, $model) = @_;
 	my $result = RDF::Query->new($sparql)->execute($model);
@@ -123,7 +123,7 @@ sub discover
 			});
 		}
 		
-		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
+		my $iterator = __rdf_query($self->_make_sparql($uri, $list), $model);
 		while (my $row = $iterator->next)
 		{
 			push @results, $row->{'descriptor'}->uri
@@ -147,7 +147,7 @@ sub discover
 		($response, $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
 			unless defined $rdfa;
 		
-		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
+		my $iterator = __rdf_query($self->_make_sparql($uri, $list), $model);
 		while (my $row = $iterator->next)
 		{
 			push @results, $row->{'descriptor'}->uri
@@ -162,7 +162,7 @@ sub discover
 	# STEP 2a: AtomOWL doesn't use <id> as a subject URI.
 	if (defined $rdfa && $rdfa->{'atom_parser'} && blessed($self->{'cache'}->{$uri}))
 	{
-		my $iterator = rdf_query($self->_make_sparql_atomowl($uri, $list), $self->{'cache'}->{$uri});
+		my $iterator = __rdf_query($self->_make_sparql_atomowl($uri, $list), $self->{'cache'}->{$uri});
 		while (my $row = $iterator->next)
 		{
 			push @results, $row->{'descriptor'}->uri
@@ -190,7 +190,7 @@ sub discover
 		my $hm_graph = $self->{'cache'}->{$hostmeta_location};
 		
 		# First try original query.
-		my $iterator = rdf_query($self->_make_sparql($uri, $list), $hm_graph);
+		my $iterator = __rdf_query($self->_make_sparql($uri, $list), $hm_graph);
 		while (my $row = $iterator->next)
 		{
 			push @results, $row->{'descriptor'}->uri
@@ -199,7 +199,7 @@ sub discover
 		}
 		
 		# Then try using host-meta URI templates.
-		$iterator = rdf_query($self->_make_sparql_template($uri, $list), $hm_graph);
+		$iterator = __rdf_query($self->_make_sparql_template($uri, $list), $hm_graph);
 		while (my $row = $iterator->next)
 		{
 			if (defined $row->{'descriptor'}
