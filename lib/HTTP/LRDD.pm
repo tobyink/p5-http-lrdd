@@ -22,7 +22,7 @@ my (@Predicates, @_Predicates, @MediaTypes);
 BEGIN
 {
 	$HTTP::LRDD::AUTHORITY = 'cpan:TOBYINK';
-	$HTTP::LRDD::VERSION   = '0.105';
+	$HTTP::LRDD::VERSION   = '0.106';
 	
 	@Predicates = (
 		'describedby',
@@ -96,9 +96,9 @@ sub discover
 	
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
-
+	
 	my (@results, $rdfa, $rdfx, $response);
-
+	
 	# STEP 1: check the HTTP headers for a descriptor link
 	if ($uri =~ /^https?:/i)
 	{
@@ -117,12 +117,12 @@ sub discover
 			$model->add_hashref({
 				$uri => {
 					'http://www.w3.org/2000/01/rdf-schema#seeAlso' => [
-							{ 'value' => "$seeother" , 'type' => 'uri' },
-						],
-					},
-				});
+						{ 'value' => "$seeother" , 'type' => 'uri' },
+					],
+				},
+			});
 		}
-
+		
 		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
 		while (my $row = $iterator->next)
 		{
@@ -134,7 +134,7 @@ sub discover
 		# Bypass further processing if we've got a result and we only wanted one!
 		return $results[0] if @results && !$list;
 	}
-
+	
 	# STEP 2: check the HTTP body (RDF) for a descriptor link
 	if ($uri =~ /^https?:/i)
 	{
@@ -146,7 +146,7 @@ sub discover
 		# If the response was not RDFa, try parsing as RDF.
 		($response, $rdfx) = $self->_cond_parse_rdf($response, $model, $uri)
 			unless defined $rdfa;
-
+		
 		my $iterator = rdf_query($self->_make_sparql($uri, $list), $model);
 		while (my $row = $iterator->next)
 		{
@@ -156,9 +156,9 @@ sub discover
 		}
 		
 		# Bypass further processing if we've got a result and we only wanted one!
-		return $results[0] if @results && !$list;		
+		return $results[0] if @results && !$list;
 	}
-
+	
 	# STEP 2a: AtomOWL doesn't use <id> as a subject URI.
 	if (defined $rdfa && $rdfa->{'atom_parser'} && blessed($self->{'cache'}->{$uri}))
 	{
@@ -230,7 +230,7 @@ sub discover
 	{
 		return $list ? @results : $results[0];
 	}
-
+	
 	return;
 }
 
@@ -238,7 +238,7 @@ sub parse
 {
 	my $self = shift;
 	my $uri  = shift or return undef;
-
+	
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
 	
@@ -267,7 +267,7 @@ sub process
 {
 	my $self = shift;
 	my $uri  = shift;
-
+	
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
 		
@@ -279,10 +279,10 @@ sub process_all
 {
 	my $self = shift;
 	my $uri  = shift;
-
+	
 	$self = $self->new
 		unless blessed($self) && $self->isa(__PACKAGE__);
-		
+	
 	my @descriptors = $self->discover($uri);
 	my $model       = $self->parse($uri) // rdf_parse();
 	
@@ -298,7 +298,7 @@ sub process_all
 sub _make_sparql
 {
 	my ($self, $uri, $list) = @_;
-
+	
 	my @p;
 	foreach my $p (@{ $self->{'predicates'} })
 	{
@@ -313,7 +313,7 @@ sub _make_sparql
 sub _make_sparql_atomowl
 {
 	my ($self, $uri, $list) = @_;
-
+	
 	my @p;
 	foreach my $p (@{ $self->{'predicates'} })
 	{
@@ -362,11 +362,11 @@ sub _cond_parse_rdfa
 	{
 		return ($response, undef);
 	}
-
+	
 	$response->is_success or return ($response, undef);
-
+	
 	my $hostlang = RDF::RDFa::Parser::Config->host_from_media_type($response->content_type);
-	$rdfa_options = RDF::RDFa::Parser::Config->new($hostlang, RDF::RDFa::Parser::Config->RDFA_GUESS, 
+	$rdfa_options = RDF::RDFa::Parser::Config->new($hostlang, RDF::RDFa::Parser::Config->RDFA_GUESS,
 		atom_parser => ($response->content_type =~ m'^application/atom\+xml'i ? 1 : 0),
 		);
 	
@@ -421,9 +421,9 @@ sub _cond_parse_rdf
 	{
 		return ($response, undef);
 	}
-
+	
 	$response->is_success or return ($response, undef);
-
+	
 	rdf_parse($response->decoded_content, type=>$type, model=>$model, base=>$response->base);
 	$self->{'cache'}->{$uri} = $model;
 	return ($response, 1);
@@ -447,7 +447,7 @@ sub _cond_parse_xrd
 	{
 		return ($response, undef);
 	}
-
+	
 	$response->is_success or return ($response, undef);
 	
 	my $xrd = XRD::Parser->new($response->decoded_content, $response->base, {loose_mime=>1}, $model->_store);

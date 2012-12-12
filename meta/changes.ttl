@@ -26,7 +26,7 @@ my:v_0-100
 		dcs:item [ rdfs:label "Add a parse method to actually do something with a descriptor URI once it's been found."@en ; a dcs:Addition ] ;
 		dcs:item [ rdfs:label "Add process and process_all methods which combine discover and parse stages."@en ; a dcs:Addition ] ;
 		dcs:item [ rdfs:label "Minor bugfixes and cleanups."@en ] 
-		] .
+	] .
 
 my:project :release my:v_0-101 .
 my:v_0-101
@@ -35,10 +35,10 @@ my:v_0-101
 	:revision       "0.101"^^xsd:string ;
 	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.101.tar.gz> ;
 	dcs:changeset [
-			dcs:versus my:v_0-100 ;
-			dcs:item
-				[ rdfs:label "Possibly this will fix some cpan-tester fails, though I'm not entirely sure."@en ; a dcs:Bugfix ]
-		] .
+		dcs:versus my:v_0-100 ;
+		dcs:item
+			[ rdfs:label "Possibly this will fix some cpan-tester fails, though I'm not entirely sure."@en ; a dcs:Bugfix ]
+	] .
 
 my:project :release my:v_0-102 .
 my:v_0-102
@@ -47,12 +47,12 @@ my:v_0-102
 	:revision       "0.102"^^xsd:string ;
 	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.102.tar.gz> ;
 	dcs:changeset [
-			dcs:versus my:v_0-101 ;
-			dcs:item
-				[ rdfs:label "Cache host-meta files."@en ; rdfs:comment "Cache host-meta files so that repeated calls to discover multiple resources on the same host do not cause repeated HTTP requests for it."@en ] ,
-				[ rdfs:label "Add examples to documentation."@en ] ,
-				[ rdfs:label "Improved Atom support."@en ] 
-		] .
+		dcs:versus my:v_0-101 ;
+		dcs:item
+			[ rdfs:label "Cache host-meta files."@en ; rdfs:comment "Cache host-meta files so that repeated calls to discover multiple resources on the same host do not cause repeated HTTP requests for it."@en ] ,
+			[ rdfs:label "Add examples to documentation."@en ] ,
+			[ rdfs:label "Improved Atom support."@en ] 
+	] .
 
 my:project :release my:v_0-103 .
 my:v_0-103
@@ -61,10 +61,9 @@ my:v_0-103
 	:revision       "0.103"^^xsd:string ;
 	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.103.tar.gz> ;
 	dcs:changeset [
-			dcs:versus my:v_0-102;
-			dcs:item
-				[ rdfs:label "process_all() would fail in the case where the target URI itself could not be parsed as RDF or XRD."@en ; a dcs:Bugfix ] 
-		] .
+		dcs:versus my:v_0-102;
+		dcs:item   [ rdfs:label "process_all() would fail in the case where the target URI itself could not be parsed as RDF or XRD."@en ; a dcs:Bugfix ] 
+	] .
 
 my:project :release my:v_0-104 .
 my:v_0-104
@@ -78,7 +77,7 @@ my:v_0-104
 		dcs:item   [ rdfs:label "Minor tidy"@en ] ;
 		dcs:item   [ rdfs:label "Module::Package::RDF"@en ; a dcs:Packaging ] ;
 		dcs:item   [ rdfs:label "Support wdrs:describedby predicate by default."@en ; a dcs:Addition ] 
-		] .
+	] .
 
 my:project :release my:v_0-105 .
 my:v_0-105
@@ -88,8 +87,18 @@ my:v_0-105
 	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.105.tar.gz> ;
 	dcs:changeset [
 		dcs:versus my:v_0-104;
-		dcs:item   [ rdfs:label "Replace UNIVERSAL::AUTHORITY with Object::AUTHORITY."@en ] ;
+		dcs:item   [ rdfs:label "Replace UNIVERSAL::AUTHORITY with Object::AUTHORITY."@en ; a dcs:Update ] ;
 		dcs:item   [ rdfs:label "Newer version of Module::Package::RDF."@en ; a dcs:Packaging, dcs:Bugfix ]
-		] .
+	] .
 
-
+my:project :release my:v_0-106 .
+my:v_0-106
+	a               :Version ;
+	dc:issued       "2012-12-12"^^xsd:date ;
+	:revision       "0.106"^^xsd:string ;
+	:file-release   <http://backpan.cpan.org/authors/id/T/TO/TOBYINK/HTTP-LRDD-0.106.tar.gz> ;
+	dcs:changeset [
+		dcs:versus my:v_0-105;
+		dcs:item   [ rdfs:label "Replace RDF::TrineShortcuts with RDF::TrineX::Function."@en; a dcs:Update ] ;
+		dcs:item   [ rdfs:label "General update/modernisation."@en; a dcs:Update ] ;
+	] .
